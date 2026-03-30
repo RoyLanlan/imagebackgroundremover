@@ -1,35 +1,29 @@
 # Image Background Remover
 
-AI-powered image background remover web app.
+AI-powered image background remover built with Next.js and TailwindCSS.
 
 ## Features
 
 - 🖼️ Upload images (JPG, PNG, WEBP)
 - 🤖 AI-powered background removal
 - 📥 Download processed images
-- 🎨 Simple and clean UI
+- 🎨 Modern UI with TailwindCSS
 
 ## Quick Start
 
-### Installation
-
 ```bash
-pip install -r requirements.txt
+npm install
+npm run dev
 ```
 
-### Run
-
-```bash
-python app.py
-```
-
-Visit `http://localhost:5000`
+Visit `http://localhost:3000`
 
 ## Tech Stack
 
-- Frontend: HTML + CSS + JavaScript
-- Backend: Python + Flask
-- AI Model: rembg (U2-Net)
+- Next.js 14
+- React 18
+- TailwindCSS 3
+- @imgly/background-removal-node
 
 ## License
 
