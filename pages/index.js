@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession, signIn, signOut } from 'next-auth/react'
+import Link from 'next/link'
 
 export default function Home() {
   const { data: session } = useSession()
@@ -7,6 +8,13 @@ export default function Home() {
   const [originalUrl, setOriginalUrl] = useState('')
   const [processedUrl, setProcessedUrl] = useState('')
   const [loading, setLoading] = useState(false)
+  const [credits, setCredits] = useState(0)
+
+  useEffect(() => {
+    if (session) {
+      fetch('/api/credits').then(r => r.json()).then(d => setCredits(d.credits))
+    }
+  }, [session])
 
   const handleFile = (selectedFile) => {
     if (selectedFile.size > 10 * 1024 * 1024) {
@@ -20,6 +28,10 @@ export default function Home() {
 
   const removeBackground = async () => {
     if (!file) return
+    if (credits <= 0) {
+      alert('积分不足，请购买积分')
+      return
+    }
     setLoading(true)
     const formData = new FormData()
     formData.append('image', file)
@@ -27,6 +39,7 @@ export default function Home() {
       const res = await fetch('https://imagebackgroundremover-api.roylanlan1115.workers.dev', { method: 'POST', body: formData })
       const blob = await res.blob()
       setProcessedUrl(URL.createObjectURL(blob))
+      setCredits(credits - 1)
     } catch (error) {
       alert('处理失败: ' + error.message)
     } finally {
@@ -60,7 +73,10 @@ export default function Home() {
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">🖼️ Image Background Remover</h1>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <Link href="/pricing" className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 text-sm">
+              💎 {credits} 积分 | 购买
+            </Link>
             <img src={session.user.image} alt="avatar" className="w-8 h-8 rounded-full" />
             <span className="text-gray-600 text-sm">{session.user.name}</span>
             <button onClick={() => signOut()} className="text-sm text-gray-500 hover:text-red-500 underline">退出</button>

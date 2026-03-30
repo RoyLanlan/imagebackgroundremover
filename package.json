@@ -11,6 +11,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
+    "@paypal/paypal-server-sdk": "^2.2.0",
     "formidable": "^3.5.1",
     "next": "14.0.4",
     "next-auth": "^4.24.13",
