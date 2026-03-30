@@ -13,9 +13,15 @@ export default async function handler(req, res) {
   if (!pkg) return res.status(400).json({ error: 'Invalid package' })
   
   try {
+    console.log('Creating order for:', pkg)
     const order = await createOrder(pkg.price, pkg.desc)
+    console.log('Order created:', order)
+    if (!order || !order.id) {
+      throw new Error('Invalid order response: ' + JSON.stringify(order))
+    }
     res.json({ orderId: order.id })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    console.error('Create order error:', error)
+    res.status(500).json({ error: error.message, details: error.stack })
   }
 }
