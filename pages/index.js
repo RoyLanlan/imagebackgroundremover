@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useSession, signIn, signOut } from 'next-auth/react'
+import { useSession, signIn } from 'next-auth/react'
 import Link from 'next/link'
+import UserMenu from '../components/UserMenu'
 
 export default function Home() {
   const { data: session } = useSession()
@@ -77,22 +78,17 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">🖼️ Image Background Remover</h1>
-          <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+            🖼️ Image Background Remover
+          </h1>
+          <div className="flex items-center gap-3">
             {session ? (
-              <>
-                <Link href="/pricing" className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 text-sm">
-                  💎 {credits} 积分 | 购买
-                </Link>
-                <img src={session.user.image} alt="avatar" className="w-8 h-8 rounded-full" />
-                <span className="text-gray-600 text-sm">{session.user.name}</span>
-                <button onClick={() => signOut()} className="text-sm text-gray-500 hover:text-red-500 underline">退出</button>
-              </>
+              <UserMenu session={session} credits={credits} />
             ) : (
               <>
-                <span className="text-sm text-gray-600">免费试用：{guestUses}/3 次</span>
-                <button onClick={() => signIn('google')} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 text-sm">
-                  登录获取更多
+                <span className="text-sm text-gray-500">免费试用：{guestUses}/3</span>
+                <button onClick={() => signIn('google')} className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-4 py-2 rounded-lg hover:opacity-90 text-sm font-medium shadow-md">
+                  登录
                 </button>
               </>
             )}
@@ -103,11 +99,19 @@ export default function Home() {
           <div
             onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]) }}
             onDragOver={(e) => e.preventDefault()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-20 text-center hover:border-green-500 hover:bg-gray-50 cursor-pointer transition"
+            className="border-2 border-dashed border-gray-200 rounded-2xl p-16 text-center hover:border-green-400 hover:bg-gradient-to-br hover:from-green-50 hover:to-blue-50 cursor-pointer transition-all duration-300"
             onClick={() => document.getElementById('fileInput').click()}
           >
-            <p className="text-xl text-gray-600">📁 拖拽图片到这里或点击上传</p>
-            <p className="text-sm text-gray-400 mt-2">支持 JPG、PNG、WEBP 格式，最大 10MB</p>
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center text-4xl shadow-lg">
+                📁
+              </div>
+              <div>
+                <p className="text-lg font-medium text-gray-700">拖拽图片到这里</p>
+                <p className="text-sm text-gray-400 mt-1">或点击选择文件</p>
+              </div>
+              <p className="text-xs text-gray-400">支持 JPG、PNG、WEBP，最大 10MB</p>
+            </div>
             <input id="fileInput" type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
           </div>
         ) : (
@@ -129,19 +133,27 @@ export default function Home() {
               </div>
             </div>
 
-            {loading && <p className="text-center text-gray-600 mb-4">⏳ 正在处理中...</p>}
+            {loading && (
+              <div className="flex items-center justify-center gap-3 py-4">
+                <div className="w-6 h-6 border-3 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-gray-600">AI 正在移除背景...</span>
+              </div>
+            )}
 
-            <div className="flex gap-4 justify-center">
-              <button onClick={removeBackground} disabled={loading} className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 disabled:opacity-50">
-                移除背景
+            <div className="flex gap-4 justify-center mt-4">
+              <button onClick={removeBackground} disabled={loading || (session && credits <= 0)} 
+                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-3 rounded-xl hover:from-green-600 hover:to-emerald-600 disabled:opacity-50 font-medium shadow-lg transition">
+                ✨ 移除背景
               </button>
               {processedUrl && (
-                <a href={processedUrl} download={file.name.replace(/\.[^.]+$/, '_nobg.png')} className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600">
-                  下载图片
+                <a href={processedUrl} download={file.name.replace(/\.[^.]+$/, '_nobg.png')} 
+                  className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-8 py-3 rounded-xl hover:from-blue-600 hover:to-indigo-600 font-medium shadow-lg transition">
+                  ⬇️ 下载
                 </a>
               )}
-              <button onClick={reset} className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600">
-                重新上传
+              <button onClick={reset} 
+                className="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl hover:bg-gray-200 font-medium transition">
+                🔄 重试
               </button>
             </div>
           </div>
