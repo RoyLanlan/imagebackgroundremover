@@ -1,4 +1,4 @@
-import { getCredits } from '../../../lib/credits'
+import { getCredits } from '../../lib/credits'
 import { getSession } from 'next-auth/react'
 
 export default async function handler(req, res) {

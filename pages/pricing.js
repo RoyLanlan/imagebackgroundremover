@@ -1,10 +1,8 @@
 import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/router'
 
 export default function Pricing() {
   const { data: session } = useSession()
-  const router = useRouter()
   const [credits, setCredits] = useState(0)
 
   useEffect(() => {
@@ -21,7 +19,6 @@ export default function Pricing() {
     })
     const { orderId } = await res.json()
     
-    // 打开 PayPal 支付窗口
     window.paypal.Buttons({
       createOrder: () => orderId,
       onApprove: async (data) => {
@@ -31,14 +28,17 @@ export default function Pricing() {
           body: JSON.stringify({ orderId: data.orderID, credits: amount }),
         })
         alert('购买成功！')
-        router.push('/')
+        window.location.href = '/'
       }
     }).render('#paypal-button-container')
   }
 
   if (!session) {
-    router.push('/')
-    return null
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">请先登录</p>
+      </div>
+    )
   }
 
   return (
