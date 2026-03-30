@@ -22,7 +22,7 @@ export default function Home() {
     const formData = new FormData()
     formData.append('image', file)
     try {
-      const res = await fetch('/api/remove-bg', { method: 'POST', body: formData })
+      const res = await fetch('https://imagebackgroundremover-api.roylanlan1115.workers.dev', { method: 'POST', body: formData })
       const blob = await res.blob()
       setProcessedUrl(URL.createObjectURL(blob))
     } catch (error) {
