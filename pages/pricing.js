@@ -2,8 +2,8 @@ import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 
 const PACKAGES = {
-  100: { price: '$9.99', label: '100 积分' },
-  500: { price: '$29.99', label: '500 积分' },
+  100: { price: '9.99', label: '100 积分' },
+  500: { price: '29.99', label: '500 积分' },
 }
 
 export default function Pricing({ paypalReady }) {
@@ -11,6 +11,7 @@ export default function Pricing({ paypalReady }) {
   const [credits, setCredits] = useState(0)
   const [selectedPackage, setSelectedPackage] = useState(null)
   const [rendered, setRendered] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (session) {
@@ -27,26 +28,39 @@ export default function Pricing({ paypalReady }) {
 
     window.paypal.Buttons({
       createOrder: async () => {
-        const res = await fetch('/api/paypal/create-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ credits: selectedPackage }),
-        })
-        const { orderId } = await res.json()
-        return orderId
+        setError('')
+        try {
+          const res = await fetch('/api/paypal/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credits: selectedPackage }),
+          })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error || '创建订单失败')
+          return data.orderId
+        } catch (err) {
+          setError(err.message)
+          throw err
+        }
       },
       onApprove: async (data) => {
-        await fetch('/api/paypal/capture-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId: data.orderID, credits: selectedPackage }),
-        })
-        alert(`购买成功！已添加 ${selectedPackage} 积分`)
-        window.location.href = '/'
+        try {
+          const res = await fetch('/api/paypal/capture-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: data.orderID, credits: selectedPackage }),
+          })
+          const result = await res.json()
+          if (!res.ok) throw new Error(result.error || '支付失败')
+          alert(`购买成功！已添加 ${selectedPackage} 积分`)
+          window.location.href = '/'
+        } catch (err) {
+          setError(err.message)
+        }
       },
       onError: (err) => {
         console.error('PayPal error:', err)
-        alert('支付失败，请重试')
+        setError('支付失败，请重试')
       }
     }).render('#paypal-button-container')
     setRendered(true)
@@ -54,6 +68,7 @@ export default function Pricing({ paypalReady }) {
 
   const handleSelect = (amount) => {
     setRendered(false)
+    setError('')
     setSelectedPackage(amount)
   }
 
@@ -93,6 +108,12 @@ export default function Pricing({ paypalReady }) {
             <h3 className="text-xl font-bold mb-4 text-center">
               支付 {PACKAGES[selectedPackage].price} 购买 {PACKAGES[selectedPackage].label}
             </h3>
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <p className="font-bold">错误</p>
+                <p>{error}</p>
+              </div>
+            )}
             {paypalReady ? (
               <div id="paypal-button-container"></div>
             ) : (
