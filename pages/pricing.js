@@ -22,48 +22,53 @@ export default function Pricing({ paypalReady }) {
   useEffect(() => {
     if (!selectedPackage || !paypalReady || rendered) return
 
-    const container = document.getElementById('paypal-button-container')
-    if (!container) return
-    container.innerHTML = ''
+    // 延迟等待 DOM 就绪
+    const timer = setTimeout(() => {
+      const container = document.getElementById('paypal-button-container')
+      if (!container) return
+      container.innerHTML = ''
 
-    window.paypal.Buttons({
-      createOrder: async () => {
-        setError('')
-        try {
-          const res = await fetch('/api/paypal/create-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ credits: selectedPackage }),
-          })
-          const data = await res.json()
-          if (!res.ok) throw new Error(data.error || '创建订单失败')
-          return data.orderId
-        } catch (err) {
-          setError(err.message)
-          throw err
+      window.paypal.Buttons({
+        createOrder: async () => {
+          setError('')
+          try {
+            const res = await fetch('/api/paypal/create-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ credits: selectedPackage }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || '创建订单失败')
+            return data.orderId
+          } catch (err) {
+            setError(err.message)
+            throw err
+          }
+        },
+        onApprove: async (data) => {
+          try {
+            const res = await fetch('/api/paypal/capture-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: data.orderID, credits: selectedPackage }),
+            })
+            const result = await res.json()
+            if (!res.ok) throw new Error(result.error || '支付失败')
+            alert(`购买成功！已添加 ${selectedPackage} 积分`)
+            window.location.href = '/'
+          } catch (err) {
+            setError(err.message)
+          }
+        },
+        onError: (err) => {
+          console.error('PayPal error:', err)
+          setError('支付失败，请重试')
         }
-      },
-      onApprove: async (data) => {
-        try {
-          const res = await fetch('/api/paypal/capture-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId: data.orderID, credits: selectedPackage }),
-          })
-          const result = await res.json()
-          if (!res.ok) throw new Error(result.error || '支付失败')
-          alert(`购买成功！已添加 ${selectedPackage} 积分`)
-          window.location.href = '/'
-        } catch (err) {
-          setError(err.message)
-        }
-      },
-      onError: (err) => {
-        console.error('PayPal error:', err)
-        setError('支付失败，请重试')
-      }
-    }).render('#paypal-button-container')
-    setRendered(true)
+      }).render('#paypal-button-container')
+      setRendered(true)
+    }, 200)
+
+    return () => clearTimeout(timer)
   }, [selectedPackage, paypalReady])
 
   const handleSelect = (amount) => {

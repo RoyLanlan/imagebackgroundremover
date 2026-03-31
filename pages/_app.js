@@ -1,18 +1,29 @@
 import '../styles/globals.css'
 import { SessionProvider } from 'next-auth/react'
-import Script from 'next/script'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function App({ Component, pageProps: { session, ...pageProps } }) {
   const [paypalReady, setPaypalReady] = useState(false)
 
+  useEffect(() => {
+    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
+    if (!clientId) return
+
+    const script = document.createElement('script')
+    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD`
+    script.async = true
+    script.onload = () => {
+      console.log('PayPal SDK loaded')
+      setPaypalReady(true)
+    }
+    script.onerror = (e) => {
+      console.error('PayPal SDK failed to load', e)
+    }
+    document.body.appendChild(script)
+  }, [])
+
   return (
     <SessionProvider session={session}>
-      <Script
-        src="https://www.paypal.com/sdk/js?client-id=AUSHJWGeMtLzEaWNP1ZX8d_qPUSqyLDSE7ZgzzBl0WCVmWBn5KBix7zjIPmSKzfIAuouOCOR69WFhQ7G&currency=USD"
-        strategy="lazyOnload"
-        onLoad={() => setPaypalReady(true)}
-      />
       <Component {...pageProps} paypalReady={paypalReady} />
     </SessionProvider>
   )
