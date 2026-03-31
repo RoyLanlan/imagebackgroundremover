@@ -1,30 +1,32 @@
 import { captureOrder } from '../../../lib/paypal'
 import { addCredits } from '../../../lib/credits'
-import { getToken } from 'next-auth/jwt'
+import { getServerSession } from 'next-auth/react'
+import { authOptions } from '../auth/[...nextauth]'
+
+export const config = {
+  api: {
+    externalResolver: true,
+  },
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
   
-  try {
-    // 使用 JWT token 验证 session
-    const token = await getToken({ 
-      req, 
-      secret: process.env.NEXTAUTH_SECRET
+  const session = await getServerSession(req, res, authOptions)
+  
+  console.log('Session in capture-order:', session ? session.user.email : 'null')
+  
+  if (!session || !session.user) {
+    return res.status(401).json({ 
+      error: 'Unauthorized', 
+      message: 'No valid session'
     })
-    
-    console.log('Session token:', token ? 'exists' : 'null')
-    
-    if (!token || !token.email) {
-      return res.status(401).json({ 
-        error: 'Unauthorized', 
-        message: 'No valid session',
-        hint: 'Make sure NEXTAUTH_SECRET is configured correctly'
-      })
-    }
-    
-    const { orderId, credits } = req.body
-    
-    console.log('Capturing order:', orderId, 'for user:', token.email)
+  }
+  
+  const { orderId, credits } = req.body
+  
+  try {
+    console.log('Capturing order:', orderId, 'for user:', session.user.email)
     const result = await captureOrder(orderId)
     console.log('Capture result:', JSON.stringify(result))
     
@@ -32,8 +34,8 @@ export default async function handler(req, res) {
     const status = result.status || result.state
     
     if (status === 'COMPLETED' || status === 'CAPTURED') {
-      addCredits(token.email, credits)
-      console.log('Credits added for:', token.email, 'amount:', credits)
+      addCredits(session.user.email, credits)
+      console.log('Credits added for:', session.user.email, 'amount:', credits)
       res.json({ success: true, status })
     } else {
       console.error('Payment not completed, status:', status)
