@@ -22,11 +22,18 @@ export default function Pricing({ paypalReady }) {
   useEffect(() => {
     if (!selectedPackage || !paypalReady || rendered) return
 
-    // 延迟等待 DOM 就绪
-    const timer = setTimeout(() => {
+    // 等待 DOM 就绪
+    const timer = setInterval(() => {
       const container = document.getElementById('paypal-button-container')
       if (!container) return
+      
+      clearInterval(timer)
       container.innerHTML = ''
+
+      if (!window.paypal || !window.paypal.Buttons) {
+        setError('PayPal 按钮组件未加载')
+        return
+      }
 
       window.paypal.Buttons({
         createOrder: async () => {
@@ -70,9 +77,9 @@ export default function Pricing({ paypalReady }) {
         }
       }).render('#paypal-button-container')
       setRendered(true)
-    }, 200)
+    }, 100)
 
-    return () => clearTimeout(timer)
+    return () => clearInterval(timer)
   }, [selectedPackage, paypalReady])
 
   const handleSelect = (amount) => {
