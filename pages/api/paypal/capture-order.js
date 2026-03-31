@@ -1,17 +1,20 @@
 import { captureOrder } from '../../../lib/paypal'
 import { addCredits } from '../../../lib/credits'
-import { getSession } from 'next-auth/react'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../auth/[...nextauth]'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
   
-  const session = await getSession({ req })
-  if (!session) return res.status(401).json({ error: 'Unauthorized' })
+  const session = await getServerSession(req, res, authOptions)
+  if (!session || !session.user) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'No valid session' })
+  }
   
   const { orderId, credits } = req.body
   
   try {
-    console.log('Capturing order:', orderId)
+    console.log('Capturing order:', orderId, 'for user:', session.user.email)
     const result = await captureOrder(orderId)
     console.log('Capture result:', JSON.stringify(result))
     

@@ -6,8 +6,16 @@ export default function App({ Component, pageProps: { session, ...pageProps } })
   const [paypalReady, setPaypalReady] = useState(false)
 
   useEffect(() => {
+    if (typeof document === 'undefined' || !document.body) return
+    
     const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
     if (!clientId) return
+
+    // 避免重复加载
+    if (document.querySelector('script[src*="paypal.com/sdk"]')) {
+      setPaypalReady(true)
+      return
+    }
 
     const script = document.createElement('script')
     script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD`
