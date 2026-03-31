@@ -6,12 +6,12 @@ const PACKAGES = {
   500: { price: '29.99', label: '500 积分' },
 }
 
-export default function Pricing({ paypalReady }) {
+export default function Pricing() {
   const { data: session } = useSession()
   const [credits, setCredits] = useState(0)
   const [selectedPackage, setSelectedPackage] = useState(null)
-  const [rendered, setRendered] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (session) {
@@ -19,71 +19,67 @@ export default function Pricing({ paypalReady }) {
     }
   }, [session])
 
-  useEffect(() => {
-    if (!selectedPackage || !paypalReady || rendered) return
-
-    // 等待 DOM 就绪
-    const timer = setInterval(() => {
-      const container = document.getElementById('paypal-button-container')
-      if (!container) return
+  const handlePaypalCheckout = async () => {
+    if (!selectedPackage) return
+    
+    setError('')
+    setLoading(true)
+    
+    try {
+      // 创建订单
+      const res = await fetch('/api/paypal/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credits: selectedPackage }),
+      })
+      const data = await res.json()
       
-      clearInterval(timer)
-      container.innerHTML = ''
-
-      if (!window.paypal || !window.paypal.Buttons) {
-        setError('PayPal 按钮组件未加载')
-        return
+      if (!res.ok || !data.orderId) {
+        throw new Error(data.error || '创建订单失败')
       }
+      
+      // 重定向到 PayPal Checkout
+      const paypalUrl = `https://www.sandbox.paypal.com/checkoutnow?token=${data.orderId}`
+      window.location.href = paypalUrl
+      
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
+  }
 
-      window.paypal.Buttons({
-        createOrder: async () => {
-          setError('')
-          try {
-            const res = await fetch('/api/paypal/create-order', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ credits: selectedPackage }),
-            })
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.error || '创建订单失败')
-            return data.orderId
-          } catch (err) {
-            setError(err.message)
-            throw err
-          }
-        },
-        onApprove: async (data) => {
-          try {
-            const res = await fetch('/api/paypal/capture-order', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderId: data.orderID, credits: selectedPackage }),
-            })
-            const result = await res.json()
-            console.log('Capture response:', result)
-            if (!res.ok || !result.success) {
-              throw new Error(result.error || result.details || '支付失败')
-            }
+  // 检查 URL 中是否有 PayPal 返回的参数
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    const PayerID = urlParams.get('PayerID')
+    
+    if (token && PayerID && session) {
+      // PayPal 返回，处理支付
+      const capturePayment = async () => {
+        try {
+          const res = await fetch('/api/paypal/capture-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: token, credits: selectedPackage }),
+          })
+          const result = await res.json()
+          
+          if (res.ok && result.success) {
             alert(`购买成功！已添加 ${selectedPackage} 积分`)
-            window.location.href = '/'
-          } catch (err) {
-            console.error('Capture error:', err)
-            setError(err.message)
+          } else {
+            setError(result.error || '支付失败')
           }
-        },
-        onError: (err) => {
-          console.error('PayPal error:', err)
-          setError('支付失败，请重试')
+        } catch (err) {
+          setError(err.message)
         }
-      }).render('#paypal-button-container')
-      setRendered(true)
-    }, 100)
-
-    return () => clearInterval(timer)
-  }, [selectedPackage, paypalReady])
+      }
+      
+      capturePayment()
+    }
+  }, [session])
 
   const handleSelect = (amount) => {
-    setRendered(false)
     setError('')
     setSelectedPackage(amount)
   }
@@ -130,11 +126,15 @@ export default function Pricing({ paypalReady }) {
                 <p>{error}</p>
               </div>
             )}
-            {paypalReady ? (
-              <div id="paypal-button-container"></div>
-            ) : (
-              <p className="text-center text-gray-500">PayPal 加载中...</p>
-            )}
+            <div className="text-center">
+              <button
+                onClick={handlePaypalCheckout}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition disabled:opacity-50"
+              >
+                {loading ? '跳转中...' : '使用 PayPal 支付'}
+              </button>
+            </div>
           </div>
         )}
       </div>
