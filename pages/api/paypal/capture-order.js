@@ -5,16 +5,25 @@ import { getToken } from 'next-auth/jwt'
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
   
-  // 使用 JWT token 验证 session
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
-  
-  if (!token || !token.email) {
-    return res.status(401).json({ error: 'Unauthorized', message: 'No valid session' })
-  }
-  
-  const { orderId, credits } = req.body
-  
   try {
+    // 使用 JWT token 验证 session
+    const token = await getToken({ 
+      req, 
+      secret: process.env.NEXTAUTH_SECRET
+    })
+    
+    console.log('Session token:', token ? 'exists' : 'null')
+    
+    if (!token || !token.email) {
+      return res.status(401).json({ 
+        error: 'Unauthorized', 
+        message: 'No valid session',
+        hint: 'Make sure NEXTAUTH_SECRET is configured correctly'
+      })
+    }
+    
+    const { orderId, credits } = req.body
+    
     console.log('Capturing order:', orderId, 'for user:', token.email)
     const result = await captureOrder(orderId)
     console.log('Capture result:', JSON.stringify(result))
