@@ -53,10 +53,14 @@ export default function Pricing({ paypalReady }) {
               body: JSON.stringify({ orderId: data.orderID, credits: selectedPackage }),
             })
             const result = await res.json()
-            if (!res.ok) throw new Error(result.error || '支付失败')
+            console.log('Capture response:', result)
+            if (!res.ok || !result.success) {
+              throw new Error(result.error || result.details || '支付失败')
+            }
             alert(`购买成功！已添加 ${selectedPackage} 积分`)
             window.location.href = '/'
           } catch (err) {
+            console.error('Capture error:', err)
             setError(err.message)
           }
         },
