@@ -17,6 +17,9 @@ export default function Pricing() {
     if (session) {
       fetch('/api/credits').then(r => r.json()).then(d => setCredits(d.credits))
     }
+    // 恢复用户之前选择的套餐（防止刷新后丢失）
+    const saved = sessionStorage.getItem('pendingPackage')
+    if (saved) setSelectedPackage(parseInt(saved))
   }, [session])
 
   const handlePaypalCheckout = async () => {
@@ -38,6 +41,10 @@ export default function Pricing() {
         throw new Error(data.error || '创建订单失败')
       }
       
+      // 保存选中的套餐到 sessionStorage，防止 PayPal 返回后 state 丢失
+      sessionStorage.setItem('pendingPackage', selectedPackage)
+      sessionStorage.setItem('paypalOrderId', data.orderId)
+
       // 重定向到 PayPal Checkout
       const paypalUrl = `https://www.sandbox.paypal.com/checkoutnow?token=${data.orderId}`
       window.location.href = paypalUrl
@@ -53,29 +60,39 @@ export default function Pricing() {
     const urlParams = new URLSearchParams(window.location.search)
     const token = urlParams.get('token')
     const PayerID = urlParams.get('PayerID')
-    
+
     if (token && PayerID && session) {
-      // PayPal 返回，处理支付
-      const capturePayment = async () => {
-        try {
-          const res = await fetch('/api/paypal/capture-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId: token, credits: selectedPackage }),
-          })
-          const result = await res.json()
-          
-          if (res.ok && result.success) {
-            alert(`购买成功！已添加 ${selectedPackage} 积分`)
-          } else {
-            setError(result.error || '支付失败')
+      const pendingPackage = parseInt(sessionStorage.getItem('pendingPackage') || '0')
+
+      if (pendingPackage > 0) {
+        const capturePayment = async () => {
+          try {
+            const res = await fetch('/api/paypal/capture-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: token, credits: pendingPackage }),
+            })
+            const result = await res.json()
+
+            if (res.ok && result.success) {
+              alert(`购买成功！已添加 ${pendingPackage} 积分`)
+              // 清除缓存
+              sessionStorage.removeItem('pendingPackage')
+              sessionStorage.removeItem('paypalOrderId')
+              // 清除 URL 参数
+              window.history.replaceState({}, '', '/pricing')
+              // 刷新积分显示
+              fetch('/api/credits').then(r => r.json()).then(d => setCredits(d.credits))
+            } else {
+              setError(result.error || '支付失败')
+            }
+          } catch (err) {
+            setError(err.message)
           }
-        } catch (err) {
-          setError(err.message)
         }
+
+        capturePayment()
       }
-      
-      capturePayment()
     }
   }, [session])
 
