@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useSession, signIn } from 'next-auth/react'
-import Link from 'next/link'
 import UserMenu from '../components/UserMenu'
 
 export default function Home() {
@@ -11,6 +10,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [credits, setCredits] = useState(0)
   const [guestUses, setGuestUses] = useState(3)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (session) {
@@ -29,11 +29,12 @@ export default function Home() {
     setFile(selectedFile)
     setOriginalUrl(URL.createObjectURL(selectedFile))
     setProcessedUrl('')
+    setError('')
   }
 
   const removeBackground = async () => {
     if (!file) return
-    
+
     if (session) {
       if (credits <= 0) {
         alert('积分不足，请购买积分')
@@ -45,24 +46,38 @@ export default function Home() {
         return
       }
     }
-    
+
     setLoading(true)
-    const formData = new FormData()
-    formData.append('image', file)
+    setError('')
+
     try {
-      const res = await fetch('https://imagebackgroundremover-api.roylanlan1115.workers.dev', { method: 'POST', body: formData })
+      const formData = new FormData()
+      formData.append('image', file)
+
+      // 调用本地 API（含服务端积分扣减）
+      const res = await fetch('/api/remove-bg', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '处理失败')
+      }
+
       const blob = await res.blob()
       setProcessedUrl(URL.createObjectURL(blob))
-      
+
       if (session) {
-        setCredits(credits - 1)
+        // 服务端已扣积分，前端同步更新显示
+        setCredits(prev => prev - 1)
       } else {
         const newUses = guestUses - 1
         setGuestUses(newUses)
         localStorage.setItem('guestUses', newUses)
       }
-    } catch (error) {
-      alert('处理失败: ' + error.message)
+    } catch (err) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -72,6 +87,7 @@ export default function Home() {
     setFile(null)
     setOriginalUrl('')
     setProcessedUrl('')
+    setError('')
   }
 
   return (
@@ -133,6 +149,12 @@ export default function Home() {
               </div>
             </div>
 
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-center">
+                ⚠️ {error}
+              </div>
+            )}
+
             {loading && (
               <div className="flex items-center justify-center gap-3 py-4">
                 <div className="w-6 h-6 border-3 border-green-500 border-t-transparent rounded-full animate-spin"></div>
@@ -141,17 +163,17 @@ export default function Home() {
             )}
 
             <div className="flex gap-4 justify-center mt-4">
-              <button onClick={removeBackground} disabled={loading || (session && credits <= 0)} 
+              <button onClick={removeBackground} disabled={loading || (session && credits <= 0)}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-3 rounded-xl hover:from-green-600 hover:to-emerald-600 disabled:opacity-50 font-medium shadow-lg transition">
                 ✨ 移除背景
               </button>
               {processedUrl && (
-                <a href={processedUrl} download={file.name.replace(/\.[^.]+$/, '_nobg.png')} 
+                <a href={processedUrl} download={file.name.replace(/\.[^.]+$/, '_nobg.png')}
                   className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-8 py-3 rounded-xl hover:from-blue-600 hover:to-indigo-600 font-medium shadow-lg transition">
                   ⬇️ 下载
                 </a>
               )}
-              <button onClick={reset} 
+              <button onClick={reset}
                 className="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl hover:bg-gray-200 font-medium transition">
                 🔄 重试
               </button>

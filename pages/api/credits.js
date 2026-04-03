@@ -1,10 +1,22 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from 'next-auth'
 import { getCredits } from '../../lib/credits'
-import { getSession } from 'next-auth/react'
 
 export default async function handler(req, res) {
-  const session = await getSession({ req })
-  if (!session) return res.status(401).json({ error: 'Unauthorized' })
-  
-  const credits = getCredits(session.user.email)
-  res.json({ credits })
+  const session = await getServerSession(req, res, authOptions)
+
+  if (!session?.user?.email) {
+    return res.status(401).json({ error: '未登录' })
+  }
+
+  if (req.method === 'GET') {
+    const credits = await getCredits(
+      session.user.email,
+      session.user.name,
+      session.user.image
+    )
+    return res.json({ credits })
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' })
 }

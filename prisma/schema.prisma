@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique  // Google OAuth 邮箱
+  name          String?
+  image         String?   // 头像 URL
+  credits       Int       @default(10) // 当前积分余额
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联：每个用户的积分变动记录
+  transactions  CreditTransaction[]
+  payments      Payment[]
+}
+
+// 积分变动记录表
+model CreditTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // "credit" | "debit"
+  amount      Int
+  description String?  // 如 "PayPal 购买 100 积分"
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 支付记录表
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  paypalOrderId   String   @unique  // PayPal 订单 ID
+  paypalPayerId   String?
+  amount          Int      // 积分数量
+  currency        String   @default("USD")
+  status          String   // "PENDING" | "COMPLETED" | "FAILED"
+  creditsGranted  Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
