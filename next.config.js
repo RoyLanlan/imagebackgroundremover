@@ -7,6 +7,7 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // 所有页面：严格 CSP
         source: '/:path*',
         headers: [
           {
@@ -22,12 +23,13 @@ const nextConfig = {
               "font-src 'self' https://*.paypal.com https://*.paypalobjects.com https://fonts.googleapis.com https://fonts.gstatic.com",
               "object-src 'none'",
               "base-uri 'self'",
+              "form-action 'self' https://*.paypal.com https://*.paypalobjects.com",
             ].join('; '),
           },
         ],
       },
-    ];
+    ]
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
